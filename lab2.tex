@@ -1,0 +1,177 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Wenneker Article
+% LaTeX Template
+% Version 2.0 (28/2/17)
+%
+% This template was downloaded from:
+% http://www.LaTeXTemplates.com
+%
+% Authors:
+% Vel (vel@LaTeXTemplates.com)
+% Frits Wenneker
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass[10pt, a4paper, twocolumn]{article} % 10pt font size (11 and 12 also possible), A4 paper (letterpaper for US letter) and two column layout (remove for one column)
+
+    \input{structure.tex} % Specifies the document structure and loads requires packages
+    
+    %----------------------------------------------------------------------------------------
+    %	ARTICLE INFORMATION
+    %----------------------------------------------------------------------------------------
+    
+    \title{Lab report for CA Lab2} % The article title
+    
+    \author{
+        \authorstyle{Xiangzhe Xu} % Authors
+        \newline\newline % Space before institutions
+        \institution{Nanjing University}\\ % Institution 1
+    }
+    
+    % Example of a one line author/institution relationship
+    %\author{\newauthor{John Marston} \newinstitution{Universidad Nacional Autónoma de México, Mexico City, Mexico}}
+    
+    \date{\today} % Add a date here if you would like one to appear underneath the title block, use \today for the current date, leave empty for no date
+    
+    %----------------------------------------------------------------------------------------
+    
+    \begin{document}
+    
+    \maketitle % Print the title
+    
+    \thispagestyle{firstpage} % Apply the page style for the first page (no headers and footers)
+    
+    %----------------------------------------------------------------------------------------
+    %	ABSTRACT
+    %----------------------------------------------------------------------------------------
+    
+    \lettrineabstract{This
+        is the report of the CA Lab2.
+        In this lab, students are required to analyze the performance of "cmove" instruction
+        under different branch patterns and branch predictors. 
+    }
+    
+    %----------------------------------------------------------------------------------------
+    %	ARTICLE CONTENTS
+    %----------------------------------------------------------------------------------------
+    
+    \section{CMOV}
+    %----------------------------------------------------------------------------------------
+    \subsection{Brief introduction}
+    The CMOVcc instructions check the state of one or more of the status flags in the EFLAGS 
+    egister (CF, OF, PF, SF, and ZF) and perform a move operation if the flags are 
+    in a specified state (or condition). A condition code (cc) is associated with each 
+    instruction to indicate the condition being tested for. 
+    If the condition is not satisfied, a move is not performed and execution continues 
+    with the instruction following the CMOVcc instruction.
+    \
+    The CMOVcc instructions were introduced in P6 family processors; however,
+     these instructions may not be supported by all IA-32 processors.
+    \footnote{Intel® 64 and IA-32 Architectures Software Developer’s Manual}
+
+    %----------------------------------------------------------------------------------------
+    \subsection{Performance on modern processors}
+    \begin{figure}[!h]
+        \centerline{\includegraphics[width=0.5\textwidth]{pics/cmov-branch.png}}
+    \end{figure}
+    As is shown in the figure, there is hardly any difference between the cmove version and the
+    ncmov version, although I have changed the loop times to 10,000,000. It's reasonable to say that
+    the cmove instruction would not affect the performance of programs running on a modern processor.
+    %----------------------------------------------------------------------------------------
+    \section{Preparation}
+    %----------------------------------------------------------------------------------------
+    \subsection{Patch file}
+    The patch file (also called a patch for short) is a text file that consists of 
+    a list of differences and is produced by running the related \textbf{\texttt{diff}} program with the 
+    original and updated file as arguments. Updating files with patch is often referred to
+     as applying the patch or simply patching the files.
+    %----------------------------------------------------------------------------------------
+    \subsection{Source code analysis}
+    \begin{lstlisting}[language=C]
+#define choose(i, a, b) ({	\
+unsigned long result;	\
+asm("testl %1,%2 ; cmovne %3,%0" \
+    :"=r" (result)	\
+    :"i" (BIT),	\
+        "g" (i),	\
+        "rm" (a),	\
+        "0" (b));	\
+result; })
+    \end{lstlisting}
+    This is the CMOV version macro in cmov.c, which means that result is the output of this 
+    assemble sentence and is readonly. Also, the variable i should be placed in a general register and 
+    variable a should be placed in either memory or register. Finally, the variable b is the same with 
+    the 0th variable. 
+    \begin{lstlisting}[language=C]
+#define choose(i, a, b) ({		\
+unsigned long result;		\
+asm("testl %1,%2 ; je 1f ; mov %3,%0\n1:"	\
+:"=r" (result)		\
+:"i" (BIT),		\
+    "g" (i),		\
+    "g" (a),		\
+    "0" (b));		\
+result; })
+
+#endif
+        
+    \end{lstlisting}
+    The not-cmov version is similar with the above one. 
+    %----------------------------------------------------------------------------------------
+    \section{WorkFlow}
+    %----------------------------------------------------------------------------------------
+    \subsection{Bash script}
+    \begin{lstlisting}[language=C]
+CONFIG="--cmd=lab2/cmov1 --cpu-type=DerivO3CPU --caches --l2cache --bpred=LocalBP"
+
+build/X86/gem5.opt configs/example/se.py ${CONFIG}
+
+FILE_NAME=local_1_cmov
+
+
+mkdir lab2/ret/${FILE_NAME}
+
+echo ${CONFIG} > config.txt
+
+cp m5out/stats.txt lab2/ret/${FILE_NAME}/stats.txt
+        
+    \end{lstlisting}
+    This is a part of my bash script to generate the result.
+    %----------------------------------------------------------------------------------------
+    \subsection{Numbers}
+    In this lab, I choose to use Numbers as my data processor for there's merely a dozen of result-sets.
+    Writing a python script for them is time-consuming. Nevertheless, I use matplotlib to draw the diagrams.
+    %----------------------------------------------------------------------------------------
+    \section{Result}
+    \subsection{Time}
+    \subsubsection{Facts}
+    
+    In terms of running time, the branch version with local predictor consume 
+    the longest time. The performance of cmov is significantly higher than
+    that of the branch one.
+    In contrast, the branch version with tournament predictor even run faster
+    than the cmov one.
+    It's also interesting to find that the local-branch version is more sensitive
+    to BITs than the other version.
+    \begin{figure}[!h]
+        \includegraphics[width=0.5\textwidth]{pics/bit-time.png}
+    \end{figure}
+    \subsubsection{Analysis}
+
+    
+    %------------------------------------------------
+    
+        
+    
+    %------------------------------------------------
+    
+    
+    \end{document}
+    
